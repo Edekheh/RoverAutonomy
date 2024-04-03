@@ -63,5 +63,9 @@
   </group>
 
   <node name="obstacle_spawner" pkg="leo_autonomy" type="main"/>
+    <node pkg="grid_map_visualization" type="grid_map_visualization" name="grid_map_visualization" args="map" output="screen">
+      <rosparam command="load" file="$(find leo_autonomy)/config/grid_map.yaml"/>
+  </node>
+  <node name="rviz" pkg="rviz" type="rviz" args="-d $(find leo_autonomy)/config/rviz.rviz" />
 
 </launch>

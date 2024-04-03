@@ -22,6 +22,8 @@ include_directories(
 
 add_library(obstacle_spawner src/obstacle_spawner.cpp)
 target_link_libraries(obstacle_spawner ${catkin_LIBRARIES})
+add_library(enviroment_manager src/enviroment_manager.cpp)
+target_link_libraries(enviroment_manager obstacle_spawner ${catkin_LIBRARIES})
 
 add_executable(main src/main.cpp)
-target_link_libraries(main ${catkin_LIBRARIES} obstacle_spawner) 
+target_link_libraries(main ${catkin_LIBRARIES} enviroment_manager) 
