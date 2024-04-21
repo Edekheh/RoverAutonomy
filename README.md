@@ -59,5 +59,7 @@ Run the simulation.
 ```bash
 roslaunch leo_autonomy sim.launch
 ```
+8. Control the rover.
+Use keys in the terminal where you run the simulation to control the rover.
 
 
