@@ -11,8 +11,7 @@ sudo apt install ros-noetic-desktop-full
 source /opt/ros/noetic/setup.bash
 echo "source /opt/ros/noetic/setup.bash" >> ~/.bashrc
 source ~/.bashrc
-sudo apt install python3-rosdep python3-rosinstall python3-rosinstall-generator python3-wstool build-essential
-sudo apt install python3-rosdep
+sudo apt install python3-rosdep python3-rosinstall python3-rosinstall-generator python3-wstool build-essential python3-catkin-tools python-is-python3
 sudo rosdep init
 rosdep update
 ```
@@ -23,7 +22,8 @@ git clone git@github.com:Edekheh/RoverAutonomy.git
 ```
 4. Install the required packages.
 ```bash
-cd RoverAutonomy
+cd ~/RoverAutonomy
+git submodule update --init --recursive
 rosdep install --from-paths src --ignore-src -r -y
 ```
 5. Install additional packages.
