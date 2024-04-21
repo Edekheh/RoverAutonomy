@@ -19,6 +19,6 @@ void ObstacleSpawner::spawnBox(const geometry_msgs::Pose &pose)
     _spawnModel.request.model_name = "box" + std::to_string(_id);
     _spawnModel.request.initial_pose = pose;
     _spawnClient.call(_spawnModel);
-    ROS_WARN_STREAM("Spawned with result: " << _spawnModel.response.status_message << " at pose: " << pose);
+    ROS_INFO_STREAM("Spawned with result: " << _spawnModel.response.status_message << " at pose: " << pose);
     _id++;
 }

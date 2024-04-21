@@ -3,7 +3,7 @@
 
 int main(int argc, char **argv)
 {
-    ros::init(argc, argv, "obstacle_spawner");
+    ros::init(argc, argv, "leo_autonomy");
     ros::NodeHandle nh;
     EnviromentCreator env_creator(nh, 30);
     ros::spin();

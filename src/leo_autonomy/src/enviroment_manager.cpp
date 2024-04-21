@@ -10,6 +10,9 @@ EnviromentCreator::EnviromentCreator(ros::NodeHandle &nh, unsigned int obstacle_
     std_srvs::Empty srv;
     _unpause_gz_client.call(srv);
     _grid_map_pub = _nh.advertise<grid_map_msgs::GridMap>("/grid_map", 1, true);
+    _tf.header.frame_id = "map";
+    _tf.child_frame_id = "base_footprint";
+    _tf.transform.rotation.w = 1.0;
     create_grid_map();
     _timer = _nh.createTimer(ros::Duration(0.25), [this](const ros::TimerEvent &event) {
         update_leo_pos();
@@ -58,6 +61,7 @@ void EnviromentCreator::create_grid_map()
     _grid_map.setFrameId("map");
     _grid_map.setGeometry(grid_map::Length(_map_width, _map_width), _map_resolution, grid_map::Position(0, 0));
     _grid_map.add("obstacles", 0.0);
+    _grid_map.add("leo", 0.0);
     for (unsigned int i = 0; i < _model_states.name.size(); i++)
     {
         if (_model_states.name[i] == "ground_plane")
@@ -89,27 +93,40 @@ void EnviromentCreator::generate_line_obstacles()
 }
 void EnviromentCreator::generate_circle_obstacles(grid_map::Position position)
 {
-    for (grid_map::CircleIterator iterator(_grid_map, position, 1.0); !iterator.isPastEnd(); ++iterator)
-        _grid_map.at("obstacles", *iterator) = 0.5;
-    for (grid_map::CircleIterator iterator(_grid_map, position, 0.75); !iterator.isPastEnd(); ++iterator)
-        _grid_map.at("obstacles", *iterator) = 0.75;
-    for (grid_map::CircleIterator iterator(_grid_map, position, 0.5); !iterator.isPastEnd(); ++iterator)
-        _grid_map.at("obstacles", *iterator) = 1.0;
+    add_circle_obstacle(1.0, 0.5, position);
+    add_circle_obstacle(0.75, 0.75, position);
+    add_circle_obstacle(0.5, 1.0, position);
 }
 
 void EnviromentCreator::update_leo_pos()
 {
+    //clear previous leo position
+    for (grid_map::GridMapIterator iterator(_grid_map); !iterator.isPastEnd(); ++iterator)
+        _grid_map.at("leo", *iterator) = 0.0;
     for (unsigned int i = 0; i < _model_states.name.size(); i++)
     {
         if (_model_states.name[i] == "leo")
         {
             grid_map::Position position(_model_states.pose[i].position.x, _model_states.pose[i].position.y);
-            for (grid_map::CircleIterator iterator(_grid_map, position, 0.5); !iterator.isPastEnd(); ++iterator)
+            for (grid_map::CircleIterator iterator(_grid_map, position, 0.25); !iterator.isPastEnd(); ++iterator)
                 _grid_map.at("leo", *iterator) = 1.0;
-            for (grid_map::CircleIterator iterator(_grid_map, position, 0.75); !iterator.isPastEnd(); ++iterator)
-                _grid_map.at("leo", *iterator) = 0.75;
-            for (grid_map::CircleIterator iterator(_grid_map, position, 1.0); !iterator.isPastEnd(); ++iterator)
+            for (grid_map::CircleIterator iterator(_grid_map, position, 0.5); !iterator.isPastEnd(); ++iterator)
                 _grid_map.at("leo", *iterator) = 0.5;
+            _tf.header.stamp = ros::Time::now();
+            _tf.transform.translation.x = _model_states.pose[i].position.x;
+            _tf.transform.translation.y = _model_states.pose[i].position.y;
+            _tf.transform.rotation = _model_states.pose[i].orientation;
+            _tf_broadcaster.sendTransform(_tf);
         }
+    }
+}
+
+void EnviromentCreator::add_circle_obstacle(double radius, double alpha, grid_map::Position position)
+{
+    for (grid_map::CircleIterator iterator(_grid_map, position, radius); !iterator.isPastEnd(); ++iterator)
+    {
+        if (_grid_map.at("obstacles", *iterator) >= alpha)
+            continue;
+        _grid_map.at("obstacles", *iterator) = alpha;
     }
 }

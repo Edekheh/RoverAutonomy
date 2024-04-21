@@ -62,10 +62,12 @@
       args="controllers/diff_drive/odom wheel_odom_with_covariance" />
   </group>
 
-  <node name="obstacle_spawner" pkg="leo_autonomy" type="main"/>
+  <node name="leo_autonomy" pkg="leo_autonomy" type="leo_autonomy"/>
     <node pkg="grid_map_visualization" type="grid_map_visualization" name="grid_map_visualization" args="map" output="screen">
       <rosparam command="load" file="$(find leo_autonomy)/config/grid_map.yaml"/>
   </node>
   <node name="rviz" pkg="rviz" type="rviz" args="-d $(find leo_autonomy)/config/rviz.rviz" />
+
+  <node name="teleop_twist_keyboard" pkg="teleop_twist_keyboard" type="teleop_twist_keyboard.py" output="screen" args="/cmd_vel:=/controllers/diff_drive/cmd_vel" />
 
 </launch>
