@@ -70,4 +70,5 @@
 
   <node name="teleop_twist_keyboard" pkg="teleop_twist_keyboard" type="teleop_twist_keyboard.py" output="screen" args="/cmd_vel:=/controllers/diff_drive/cmd_vel" />
 
+  <node name="rqt_plot" pkg="rqt_plot" type="rqt_plot" output="screen" args="/controllers/diff_drive/linear/current/data /controllers/diff_drive/linear/setpoint/data /controllers/diff_drive/angular/current/data /controllers/diff_drive/angular/setpoint/data" />
 </launch>

@@ -1,10 +1,12 @@
 #include "enviroment_manager.h"
 #include "grid_map_core/GridMap.hpp"
+#include <tf2/utils.h>
 
 EnviromentCreator::EnviromentCreator(ros::NodeHandle &nh, unsigned int obstacle_count) : _nh(nh), _obstacle_spawner(nh)
 {
     wait_until_sim_time_starts();
     _unpause_gz_client = _nh.serviceClient<std_srvs::Empty>("/gazebo/unpause_physics");
+    _pause_gz_client = _nh.serviceClient<std_srvs::Empty>("/gazebo/pause_physics");
     _model_states_sub = _nh.subscribe<gazebo_msgs::ModelStates>("/gazebo/model_states", 1, [this](const gazebo_msgs::ModelStates::ConstPtr &msg) { _model_states = *msg; });
     init(obstacle_count);
     std_srvs::Empty srv;
@@ -16,12 +18,14 @@ EnviromentCreator::EnviromentCreator(ros::NodeHandle &nh, unsigned int obstacle_
     create_grid_map();
     _timer = _nh.createTimer(ros::Duration(0.25), [this](const ros::TimerEvent &event) {
         update_leo_pos();
+        update_gazebo();
         grid_map_msgs::GridMap _grid_map_msg;
         grid_map::GridMapRosConverter::toMessage(_grid_map, _grid_map_msg);
         _grid_map_msg.info.header.stamp = ros::Time::now();
         _grid_map_pub.publish(_grid_map_msg);
     });
     ROS_INFO("Environment created");
+    _environment_ready = true;
 }
 
 void EnviromentCreator::wait_until_sim_time_starts()
@@ -102,7 +106,13 @@ void EnviromentCreator::update_leo_pos()
 {
     //clear previous leo position
     for (grid_map::GridMapIterator iterator(_grid_map); !iterator.isPastEnd(); ++iterator)
+    {
+        if (_grid_map.at("leo", *iterator) == 0.0)
+            continue;
+        if (_grid_map.at("leo", *iterator) >= 0.9 && _grid_map.at("leo", *iterator) <= 1.0)
+            continue;
         _grid_map.at("leo", *iterator) = 0.0;
+    }
     for (unsigned int i = 0; i < _model_states.name.size(); i++)
     {
         if (_model_states.name[i] == "leo")
@@ -128,5 +138,56 @@ void EnviromentCreator::add_circle_obstacle(double radius, double alpha, grid_ma
         if (_grid_map.at("obstacles", *iterator) >= alpha)
             continue;
         _grid_map.at("obstacles", *iterator) = alpha;
+    }
+}
+
+geometry_msgs::Pose2D EnviromentCreator::get_leo_pose()
+{
+    geometry_msgs::Pose2D pose;
+    pose.x = _tf.transform.translation.x;  
+    pose.y = _tf.transform.translation.y;
+    pose.theta = tf2::getYaw(_tf.transform.rotation);
+    return pose;
+}
+
+grid_map::GridMap *EnviromentCreator::get_grid_map()
+{
+    return &_grid_map;
+}
+
+bool EnviromentCreator::environment_ready()
+{
+    return _environment_ready;
+}
+
+void EnviromentCreator::update_gazebo()
+{
+    for (unsigned int i = 0; i < _model_states.name.size(); i++)
+    {
+        if (_model_states.name[i] == "leo")
+            continue;
+        //else check for collision
+        geometry_msgs::Pose leo_pose;
+        leo_pose.position.x = _tf.transform.translation.x;
+        leo_pose.position.y = _tf.transform.translation.y;
+        leo_pose.position.z = _tf.transform.translation.z;
+        leo_pose.orientation = _tf.transform.rotation;
+        const double COL_RADIUS = 0.5;
+        if (sqrt(pow(leo_pose.position.x - _model_states.pose[i].position.x, 2) + pow(leo_pose.position.y - _model_states.pose[i].position.y, 2)) < COL_RADIUS)
+        {
+            ROS_ERROR("Collision detected with object: %s", _model_states.name[i].c_str());
+            std_srvs::Empty srv;
+            _pause_gz_client.call(srv);
+            ros::shutdown();
+        }
+        //check for out of bounds
+        const double OFFSET = 0.5;
+        if (leo_pose.position.x > _map_width / 2 - OFFSET || leo_pose.position.x < -_map_width / 2 + OFFSET || leo_pose.position.y > _map_width / 2 - OFFSET || leo_pose.position.y < -_map_width / 2 + OFFSET)
+        {
+            ROS_ERROR("Out of bounds detected");
+            std_srvs::Empty srv;
+            _pause_gz_client.call(srv);
+            ros::shutdown();
+        }
     }
 }
